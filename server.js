@@ -7,7 +7,6 @@ var fs = require("fs");
 
 var async = require("async");
 
-var dateformat = require('./date.format.js');
 var moment = require('moment');
 
 // Using socket.io
