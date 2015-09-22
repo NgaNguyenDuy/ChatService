@@ -1,0 +1,22 @@
+{
+  "name": "ChatService",
+  "version": "1.0.0",
+  "description": "chat service for bibitv website",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "chatservice",
+    "iojs",
+    "bibitv"
+  ],
+  "author": "NgaNguyenDuy",
+  "license": "MIT",
+  "dependencies": {
+    "async": "^1.4.2",
+    "moment": "^2.10.6",
+    "mysql": "^2.9.0",
+    "socket.io": "^1.3.6"
+  }
+}
