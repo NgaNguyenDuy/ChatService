@@ -50,6 +50,19 @@ io.on('connection', function(socket){
 
 	socket.on('uid', function(data) {
 
+		// console.log(data);
+
+		connections.query(`select roomId from chat_rooms where userID=${data.current_id}`, function(err, res) {
+			if (err) {
+				console.log(err);
+			} else { 
+				if (res.length > 0) {
+					res.forEach(function(e) {
+						socket.join(e.roomId);
+					})
+				};
+			};
+		})
 
 		connections.query("select userID from chat_users where userID=" + data.current_id, function(err, res) {
 			if (err) {
@@ -70,7 +83,7 @@ io.on('connection', function(socket){
 						} else {
 							console.log('user '+ data.username +' is online');
 						};
-					})
+					});
 				};
 			};
 		});
@@ -128,7 +141,6 @@ io.on('connection', function(socket){
 
 			connections.query(`select socketID from chat_users where userID=${touID}`, function(err, res) {
 
-				// console.log(data);
 
 				var now = moment().format('YYYY-MM-DD hh:mm:ss');
 
@@ -168,7 +180,143 @@ io.on('connection', function(socket){
 
 	});
 
-	// 
+
+	socket.on('new room', function(data) {
+
+		var roomId = crypto.randomBytes(20).toString('hex');
+
+		var init_users_in_group = data.listUsers.split(',');
+		init_users_in_group.push(data.cid);
+
+		var listavt = [];
+
+		init_users_in_group.forEach(function(elem, index) {
+
+			connections.query(`insert into chat_rooms(roomId, userID) values ("${roomId}", ${elem})`, function(e, r) {
+				if (e) {
+					console.log(e);
+				} else {
+					console.log('create success a room with room id ' + roomId);
+				};
+			});
+
+		});
+
+		socket.emit('room created', {roomId: roomId});
+	});
+
+	socket.on('update room', function(data) {
+
+
+		function difference(a1, a2) {
+			var a2Set = new Set(a2);
+	  		return a1.filter(function(x) { return !a2Set.has(x); });
+		}
+
+		function symmetric_difference(a1, a2) {
+  			return difference(a1, a2).concat(difference(a2, a1));
+		}
+
+
+		var update_users = data.listUsers.split(',');
+		var list_old_users = [];
+		var tasks = [];
+
+		tasks.push(function(callback) {
+			connections.query(`select userID from chat_rooms where roomId='${data.roomId}'`, function(err, res) {
+				if (err) {
+					callback(err);
+				} else {
+					res.forEach(function(e) {
+						list_old_users.push(e.userID);
+					});
+					callback();
+				};
+			});
+		});
+
+		async.series(tasks, function(err, res) {
+			// console.log('oul-user -- ' + list_old_users);
+			// console.log('new user -- ' + update_users);
+			// console.log(difference(update_users, list_old_users));
+			// console.log(difference([36, 34, 35, 33], [36, 34]));
+		});
+
+	})
+
+
+	socket.on('group message', function(data) {
+
+		console.log(data);
+
+		connections.query(`select roomId from chat_rooms where userID=${data.cid} and roomId="${data.roomId}"`, function(e, r) {
+			if (e) {
+				console.log(e);
+			} else {
+				r.forEach(function(e) {
+					io.to(e.roomId).emit('room:chat', {
+						avt: data.avt,
+						message: data.message						
+					});
+				});
+			};
+		});
+
+		var nowg = moment().format('YYYY-MM-DD hh:mm:ss');
+		
+
+		var list_users_in_group = data.tolistusers.split(',');
+
+		connections.query(`insert into chat_mess_rooms (roomId, userIDSent, socketID, content, avt, chatTime) values ("${data.roomId}", ${data.cid}, "${data.sid}", "${data.message}", "${data.avt}", "${nowg}")`, function(err, res) {
+			if (err) {
+				console.log(err);
+			} else {
+				console.log('save successeful');
+			};
+		});
+
+	});
+
+	socket.on('list user', function(data) {
+
+		let lu = [];
+		let tasks = [];
+
+		tasks.push(function(cb) {
+
+			connections.query(`select userID from chat_rooms where roomId="${data.roomId}"`, function(err, res) {
+				if (err) {
+					cb(err);
+				} else {
+					if (res.length > 0) {
+						res.forEach(function(el) {
+							lu.push(el.userID);
+						})
+						cb();
+					} else {
+						cb('not found');
+					};
+				};
+			})	
+		});
+
+		async.series(tasks, function(e, r) {
+			socket.emit('list:users', {list_users: lu});
+		})
+		
+	})
+
+	socket.on('list mess', function(data) {
+		console.log(data);
+
+		connections.query(`select * from chat_mess_rooms where roomId="${data.roomId}" order by chatTime ASC`, function(err, res) {
+			if (err) {
+				console.log(err);
+			} else {
+				socket.emit('list:mess', res);
+			};
+		})	
+	})
 
 	socket.on('disconnect', function(){ 
 		connections.query(`update chat_users set status='offline', socketID='' where socketID='${socket.id}'`, function(e, r) {
@@ -187,6 +335,7 @@ io.on('connection', function(socket){
 
 
 
+
 var createChatMess = connections.query('create table if not exists chat_messages (' +
 				'id int(11) not null AUTO_INCREMENT, ' + 
 				'userID int(11) not null,' +
@@ -196,7 +345,7 @@ var createChatMess = connections.query('create table if not exists chat_messages
                 'dTime datetime not null,' + 
                 'avtUserID VARCHAR(100) not null,' +
                 'avtToUserID VARCHAR(100) not null,' +
-                'PRIMARY KEY(id))');
+                'PRIMARY KEY(id)) CHARACTER SET utf8 COLLATE utf8_general_ci;');
 
 var createChatUsers = connections.query('create table if not exists chat_users (' +
 				'id int(11) not null AUTO_INCREMENT, ' + 
@@ -204,8 +353,25 @@ var createChatUsers = connections.query('create table if not exists chat_users (
 				'socketID VARCHAR(100) not null,' +
                 'username VARCHAR(20) not null,' +
                 'status VARCHAR(10) not null,' +
-                'avt VARCHAR(50) not null,' +
-                'PRIMARY KEY(id))');
+                'avt VARCHAR(100) not null,' +
+                'PRIMARY KEY(id)) CHARACTER SET utf8 COLLATE utf8_general_ci;');
+
+var createChatRooms = connections.query('create table if not exists chat_rooms (' +
+				'id int(11) not null AUTO_INCREMENT, ' + 
+				'roomId VARCHAR(100) not null,' +
+                'userID int(11) not null,' +
+                'avt VARCHAR(100) null,' +
+                'PRIMARY KEY(id)) CHARACTER SET utf8 COLLATE utf8_general_ci;');
+
+var createMessRooms = connections.query('create table if not exists chat_mess_rooms (' +
+				'id int(11) not null AUTO_INCREMENT, ' + 
+				'roomId VARCHAR(100) not null,' +
+                'userIDSent int(11) not null,' +
+                'socketID VARCHAR(100) not null,' +
+                'content text not null,' +
+                'avt VARCHAR(100) not null,' +
+                'chatTime datetime not null,' +
+                'PRIMARY KEY(id)) CHARACTER SET utf8 COLLATE utf8_general_ci;') ;
 
 createChatMess
 	.on('error', function(err) {
@@ -228,3 +394,25 @@ createChatUsers
 	.on('end', function() {
 
 	})
+
+createChatRooms
+	.on('error', function(err) {
+		console.log("Erro:" + err);
+	})
+	.on('result', function(result) {
+		// print information after created table successeful
+	})
+	.on('end', function() {
+
+	})
+
+createMessRooms
+	.on('error', function(err) {
+		console.log("Erro:" + err);
+	})
+	.on('result', function(result) {
+		// print information after created table successeful
+	})
+	.on('end', function() {
+
+	})		
