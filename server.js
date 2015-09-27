@@ -52,7 +52,7 @@ io.on('connection', (socket) => {
 
 	socket.on('uid', (data) => {
 
-		// console.log(data);
+		console.log(data);
 
 		connections.query(`select roomId from chat_rooms where userID=${data.current_id}`, function(err, res) {
 			if (err) {
