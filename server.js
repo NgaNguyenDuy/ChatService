@@ -101,6 +101,7 @@ io.on('connection', (socket) => {
 	socket.on('chat message', function(data){
 		var touID = parseInt(data.touid);
 
+		console.log(data);
 
 		let tasks = [], auid, atuid;
 
@@ -148,7 +149,7 @@ io.on('connection', (socket) => {
 
 				var now = moment().format('YYYY-MM-DD hh:mm:ss');
 
-				
+								
 
 				if (res.length > 0) {
 					socket.broadcast.to(res[0].socketID).emit('new message', data);
