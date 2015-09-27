@@ -52,7 +52,7 @@ io.on('connection', (socket) => {
 
 	socket.on('uid', (data) => {
 
-		console.log(data);
+		// console.log(data);
 
 		connections.query(`select roomId from chat_rooms where userID=${data.current_id}`, function(err, res) {
 			if (err) {
@@ -89,8 +89,6 @@ io.on('connection', (socket) => {
 				};
 			};
 		});
-
-		console.log(data.current_id);
 
 		socket.broadcast.emit('user_status', {
 			uid: data.current_id,
