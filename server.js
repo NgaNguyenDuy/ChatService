@@ -15,13 +15,13 @@ var io = require("socket.io")(app);
 
 var crypto = require("crypto");
 
-app.listen(7777, function() {
+app.listen(7777, () => {
 	console.log('Chat service was listening at port *:7777');
-})
+});
 
 function handler (req, res) {
 	fs.readFile(__dirname + "/index.html", 
-		function(err, data) {
+		(err, data) => {
 			res.writeHead(200);
 			res.end(data);
 	});
@@ -32,7 +32,7 @@ var configMysql = require("./config.json");
 
 var connections = mysql.createConnection(configMysql);
 
-connections.connect(function(err) {
+connections.connect((err) => {
 	if (err) {
 		console.log("Error: " + err.stack);
 	} else {
@@ -41,14 +41,16 @@ connections.connect(function(err) {
 });
 
 
-io.on('connection', function(socket){
+io.on('connection', (socket) => {
 	// console.log(socket.id + ' has connected');
+
+	console.log(socket.id + 'is online');
 
 	var id = crypto.randomBytes(20).toString('hex');
 
 	socket.emit('welcome', {message: "Welcome " + id, id: socket.id});
 
-	socket.on('uid', function(data) {
+	socket.on('uid', (data) => {
 
 		// console.log(data);
 
@@ -57,7 +59,7 @@ io.on('connection', function(socket){
 				console.log(err);
 			} else { 
 				if (res.length > 0) {
-					res.forEach(function(e) {
+					res.forEach((e) => {
 						socket.join(e.roomId);
 					})
 				};
@@ -87,6 +89,8 @@ io.on('connection', function(socket){
 				};
 			};
 		});
+
+		console.log(data.current_id);
 
 		socket.broadcast.emit('user_status', {
 			uid: data.current_id,
