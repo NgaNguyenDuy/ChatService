@@ -44,8 +44,6 @@ connections.connect((err) => {
 io.on('connection', (socket) => {
 	// console.log(socket.id + ' has connected');
 
-	console.log(socket.id + 'is online');
-
 	var id = crypto.randomBytes(20).toString('hex');
 
 	socket.emit('welcome', {message: "Welcome " + id, id: socket.id});
@@ -188,22 +186,41 @@ io.on('connection', (socket) => {
 
 		var roomId = crypto.randomBytes(20).toString('hex');
 
-		var init_users_in_group = data.listUsers.split(',');
-		init_users_in_group.push(data.cid);
+		// var init_users_in_group = data.listUsers.split(',');
 
-		var listavt = [];
-
-		init_users_in_group.forEach(function(elem, index) {
-
-			connections.query(`insert into chat_rooms(roomId, userID) values ("${roomId}", ${elem})`, function(e, r) {
+		for(var i = 0; i < data.listUsers.id.length; i++) {
+			console.log(data.listUsers.id[i]);
+			console.log(data.listUsers.username[i]);
+			connections.query(`insert into chat_rooms(roomId, userID, username) values ("${roomId}", ${data.listUsers.id[i]}, "${data.listUsers.username[i]}")`, function(e, r) {
 				if (e) {
 					console.log(e);
 				} else {
 					console.log('create success a room with room id ' + roomId);
 				};
 			});
+		}
 
-		});
+		// console.log(data.listUsers);
+
+		// data.listUsers.forEach(function(elem, i) {
+		// 	console.log(elem)
+		// })
+
+		// init_users_in_group.push(data.cid);
+
+		// var listavt = [];
+
+		// init_users_in_group.forEach(function(elem, index) {
+
+		// 	connections.query(`insert into chat_rooms(roomId, userID) values ("${roomId}", ${elem})`, function(e, r) {
+		// 		if (e) {
+		// 			console.log(e);
+		// 		} else {
+		// 			console.log('create success a room with room id ' + roomId);
+		// 		};
+		// 	});
+
+		// });
 
 		socket.emit('room created', {roomId: roomId});
 	});
@@ -287,13 +304,13 @@ io.on('connection', (socket) => {
 
 		tasks.push(function(cb) {
 
-			connections.query(`select userID from chat_rooms where roomId="${data.roomId}"`, function(err, res) {
+			connections.query(`select username from chat_rooms where roomId="${data.roomId}"`, function(err, res) {
 				if (err) {
 					cb(err);
 				} else {
 					if (res.length > 0) {
 						res.forEach(function(el) {
-							lu.push(el.userID);
+							lu.push(el.username);
 						})
 						cb();
 					} else {
@@ -363,6 +380,7 @@ var createChatRooms = connections.query('create table if not exists chat_rooms (
 				'id int(11) not null AUTO_INCREMENT, ' + 
 				'roomId VARCHAR(100) not null,' +
                 'userID int(11) not null,' +
+                'username VARCHAR(20) not null,' +
                 'avt VARCHAR(100) null,' +
                 'PRIMARY KEY(id)) CHARACTER SET utf8 COLLATE utf8_general_ci;');
 
